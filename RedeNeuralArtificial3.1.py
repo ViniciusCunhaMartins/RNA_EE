@@ -5,7 +5,8 @@
 # Projeto de desenvolvimento de uma Rede      #
 # Neural Perceptron Multicamada treinada      #
 # com   Estratégias   Evolutivas    para      #
-# problemas de classificação.                 #
+# problemas    de    classificação    ou      #
+# regressão.                                  #
 ###############################################
 #EE-(µ+λ)
 
@@ -14,23 +15,23 @@ import numpy as np
 from IPython.display import display, clear_output
 from random import shuffle
 import time, datetime
-import copy
-import csv
+import copy, csv, os
 
 
 # Constantes
-NUM_NEURONS = 4                         # Número de neurônios por camada escondida
-NUM_OUTPUT_NEURONS = 4                  # Número de neurônios na camada de saída; quantidade de categorias para classificação
-NUM_HIDDEN_LAYERS = 1                   # Número de camadas escondidas
-NUM_GENES = 100                         # Número de indivíduos; tamanho das populações
-NUM_CLONES = 10                         # Número de clones por indivíduo
-NUM_EPOCHS = 101                        # Número de épocas de treinamento
+NUM_NEURONS = 20                        # Número de neurônios por camada escondida
+NUM_OUTPUT_NEURONS = 1                  # Número de neurônios na camada de saída; quantidade de categorias para classificação
+NUM_HIDDEN_LAYERS = 3                   # Número de camadas escondidas
+NUM_GENES = 200                         # Número de indivíduos; tamanho das populações
+NUM_CLONES = 20                         # Número de clones por indivíduo
+NUM_EPOCHS = 400                        # Número de épocas de treinamento
 TEST = 0.2                              # Proporção do conjuno de teste em relação ao dataset
-NORMALIZE = True                        # Se "True", o dataset será normalizado
+NORMALIZE_X, NORMALIZE_Y = True, True   # Se "True", o dataset será normalizado
 
+atual_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Reading Dataset
-with open('F:/Downloads/datasets/updated_pollution_dataset (2).csv', mode ='r') as file:
+with open(f'{atual_dir}datasets/function_sigmoid.csv', mode ='r') as file:
     csvfile = list(csv.reader(file))
     csvfile.pop(0)
     shuffle(csvfile)
@@ -50,16 +51,31 @@ def normalize(x):
     min_vals = np.min(x, axis=0)
     max_vals = np.max(x, axis=0)
 
-    diff = max_vals - min_vals
-    diff[diff == 0] = 1
+    diff = []
+    np.array(diff)
+    try:
+        for i in range(len(min_vals)):
+            diff.append(0)
+            diff[i] = max([max_vals[i], abs(min_vals[i])]) if min_vals[i] < 0 and max_vals[i] >= 0 else max_vals[i] - min_vals[i]
+
+    except:
+        diff = max([max_vals, abs(min_vals)]) if min_vals < 0 and max_vals >= 0 else max_vals - min_vals
+
+    normalized_x = np.divide(x, diff)
+
+    #diff[diff == 0] = 1
     # Normaliza os dados
-    normalized_x = np.divide(x - min_vals, diff)
+    #print(normalized_x)
+    #f = 1/0
 
     return normalized_x
 
 # Normalize Dataset
-if NORMALIZE:
+if NORMALIZE_X:
     x = normalize(x)
+
+if NORMALIZE_Y:
+    y = normalize(y)
 
 NUM_VARIABLES = len(x[0])+1      # 1 a mais para o viés
 
@@ -71,8 +87,8 @@ x_train = x[:int(len_inputs*(1 - TEST))]
 y_test = y[int(len_inputs*(1 - TEST)):]
 y_train = y[:int(len_inputs*(1 - TEST))]
 
-print(x_train)
-print(y_train)
+#print(x_train)
+#print(y_train)
 
 def convert(n):   # Convert seconds to clock time
     return str(datetime.timedelta(seconds = n))
@@ -89,14 +105,8 @@ def softmax(values):   # Softmax Function
 def confusion_matrix(matrix):   # Config Confusion Matrix
     ax_.cla()
 
-    # Calcular distâncias absolutas do valor fixo
-    distancias = len(x_train) - matrix
-
-    # Inverter para que valores mais próximos do valor fixo sejam mais escuros
-    cores = len(x_train) - distancias
-
-    # Usar o mapa de cores 'Blues' e aplicar a matriz de distâncias invertidas
-    cax = ax_.matshow(cores, cmap=plt.cm.Blues, vmax=len(x_test)/NUM_OUTPUT_NEURONS, vmin=0)
+    # Usar o mapa de cores 'Blues' e aplicar a matriz
+    cax = ax_.matshow(matrix, cmap=plt.cm.Blues, vmax=len(x_test)/NUM_OUTPUT_NEURONS, vmin=0)
 
     # Exibir valores na matriz
     for i in range(NUM_OUTPUT_NEURONS):
@@ -145,20 +155,28 @@ def out_layer(mutations):
                 values = np.zeros((NUM_HIDDEN_LAYERS + 1, NUM_NEURONS))
 
                 # Primeira camada
-                values[0] = sigmoid(np.dot(mutations[h * NUM_CLONES + i][0], variables))   #np.maximum(0, np.dot(mutations[h * NUM_CLONES + i][0], variables))   #tanh(np.dot(mutations[h * NUM_CLONES + i][0], variables))   #
+                values[0] = np.maximum(0, np.dot(mutations[h * NUM_CLONES + i][0], variables))   #tanh(np.dot(mutations[h * NUM_CLONES + i][0], variables))   #sigmoid(np.dot(mutations[h * NUM_CLONES + i][0], variables))   #
 
                 # Camadas ocultas
                 for j in range(1, NUM_HIDDEN_LAYERS):
                     values[j] = np.maximum(0, np.dot(mutations[h * NUM_CLONES + i][j], np.append(values[j-1], -1)))   #tanh(np.dot(mutations[h * NUM_CLONES + i][j], values[j-1]))   #sigmoid(np.dot(mutations[h * NUM_CLONES + i][j], values[j-1]))   #
 
                 # Camada de saída
-                final_output = softmax(np.dot(mutations[h * NUM_CLONES + i][-1], values[-2]))
-                prediction = np.argmax(final_output)
+                if NUM_OUTPUT_NEURONS != 1:
+                    final_output = softmax(np.dot(mutations[h * NUM_CLONES + i][-1], values[-2]))
 
-                if prediction == y_train[g]:
-                    scores[h][i] += 1 #(final_output[prediction])**(1/4)  # Pontua os clones de cada indivíduo
-                #else:
-                #    scores[h][i] -= (final_output[prediction])**4# + 0.1
+                    prediction = np.argmax(final_output)
+
+                    scores[h][i] -= abs(prediction - y_train[g]) #(final_output[prediction])**(1/4)  # Pontua os clones de cada indivíduo
+                
+                else:
+                    prediction = np.dot(mutations[h * NUM_CLONES + i][-1], values[-2])[0]
+                    #print(prediction)
+                    #f = 1/0
+
+                    scores[h][i] -= abs(prediction - y_train[g]) #(final_output[prediction])**(1/4)  # Pontua os clones de cada indivíduo
+
+
 
     best_indices = np.argmax(scores, axis=1)
     for h in range(NUM_GENES):
@@ -175,22 +193,27 @@ def test(mutations, input, output):
             values = np.zeros((NUM_HIDDEN_LAYERS + 1, NUM_NEURONS))
 
             # Primeira camada
-            values[0] = sigmoid(np.dot(mutations[h][0], variables))   #np.maximum(0, np.dot(mutations[h][0], variables))  #tanh(np.dot(mutations[h][0], variables))   #
+            values[0] = np.maximum(0, np.dot(mutations[h][0], variables))  #tanh(np.dot(mutations[h][0], variables))   #sigmoid(np.dot(mutations[h][0], variables))   #
 
             # Camadas ocultas
             for j in range(1, NUM_HIDDEN_LAYERS):
                 values[j] = np.maximum(0, np.dot(mutations[h][j], np.append(values[j-1], -1)))  #tanh(np.dot(mutations[h][j], values[j-1]))   #sigmoid(np.dot(mutations[h][j], values[j-1]))   #
 
             # Camada de saída
-            final_output = softmax(np.dot(mutations[h][-1], values[-2]))
-            prediction = np.argmax(final_output)
+            if NUM_OUTPUT_NEURONS != 1:
+                final_output = softmax(np.dot(mutations[h][-1], values[-2]))
+                prediction = np.argmax(final_output)
 
-            if prediction == output[g]:
-                scores[h] += 1 #(final_output[prediction])**(1/4)   # Pontua o indivíduo
-            #else:
-            #    scores[h] -= (final_output[prediction])**4# + 0.1
+                # Pontua os indivíduos
+                scores[h] -= abs(output[g] - prediction) #(final_output[prediction])**(1/4)   # Pontua o indivíduo
 
-            matrix[h][int(output[g])][int(prediction)] += 1
+            else:
+                prediction = np.dot(mutations[h][-1], values[-2])
+
+                # Pontua os indivíduos
+                scores[h] -= abs(output[g] - prediction) #(final_output[prediction])**(1/4)   # Pontua o indivíduo
+
+            #matrix[h][int(output[g])][int(prediction)] += 1
 
 
     return scores, matrix[np.argmax(scores)]
@@ -203,9 +226,9 @@ for i in range(3):
     fig_, ax_ = plt.subplots()
     plt.rcParams['figure.figsize'] = (8,6)
     fig, ax = plt.subplots()
-    ax.set_title('Taxa de Erro por Época')
+    ax.set_title('Função de Perda')
     ax.set_xlabel('Época')
-    ax.set_ylabel('Taxa de Erro (%)')
+    ax.set_ylabel('Erro Absloluto Médio')
     ax.grid(True)
     #mng = plt.get_current_fig_manager()
     #mng.full_screen_toggle()
@@ -229,17 +252,19 @@ for i in range(3):
         score_test, matrix_test = test(generation, x_test, y_test)
         score_train, matrix_train = test(generation, x_train, y_train)
 
-        clone_mean.append((len(x_train) - (np.mean(np.max(score, axis=1)))) * 100/len(x_train))
-        best_scores.append((len(x_train) - np.max(np.max(score, axis=1))) * 100/len(x_train))
-        test_mean.append((len(x_test) - np.mean(score_test)) * 100 / len(x_test))
-        test_best.append((len(x_test) - np.max(score_test)) * 100 / len(x_test))
+        clone_mean.append(abs(np.mean(np.max(score, axis=1)))/len(x_train))
+        best_scores.append(abs(np.max(np.max(score, axis=1)))/len(x_train))
+        test_mean.append(abs(np.mean(score_test))/len(x_test))
+        test_best.append(abs(score_test[np.argmax(np.max(score, axis=1))])/len(x_test))
+        print(abs(np.max(np.max(score, axis=1)))/len(x_train))
+        print(abs(score_test[np.argmax(np.max(score, axis=1))])/len(x_test))
 
 
         t_estimado = convert(int((time.time() - t_atual) * (NUM_EPOCHS - len(clone_mean))))
         print(f'{round(len(clone_mean)/NUM_EPOCHS * 100, 2)}%', f'Tempo restante estimado: {t_estimado}')
         #print(np.mean(np.max(score, axis=1)), np.max(np.max(score, axis=1)))
 
-        ax.set_ylim(0, 100)
+        ax.set_ylim(0, 1)
         ax.plot(range(len(clone_mean)), clone_mean, label='Média', color='blue', linewidth=0.5)
         ax.plot(range(len(best_scores)), best_scores, label='Melhor indivíduo', color='purple', linewidth=0.5)
         ax.plot(range(len(test_mean)), test_mean, label='Média (Teste)', color='red', linewidth=0.5)
@@ -265,7 +290,7 @@ for i in range(3):
             sum += matrix_test[j][j]
         accuracy_test = round((100 * sum)/(np.sum(np.sum(matrix_test, axis=1))), 2)
 
-        print("                         ", np.argmax(np.max(score, axis=1)), "    ", np.argmax(score_test))
+        print("                         ", np.argmax(np.max(score, axis=1)), "    ", np.argmax(np.max(score, axis=1)))
         print(f"Acurácia (treino, teste): {accuracy_train}%, {accuracy_test}%\n\n")
 
 
@@ -288,3 +313,4 @@ for i in range(3):
             print('Salvando matriz de confusão...')
             plt.savefig(f'F:/Downloads/Estudo_RNA_heart_disease/{i}_matriz_de_confusao_{NUM_NEURONS}n_{NUM_HIDDEN_LAYERS}hl.png')
             plt.close()
+            
