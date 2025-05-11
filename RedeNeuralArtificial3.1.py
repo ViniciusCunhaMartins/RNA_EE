@@ -31,7 +31,7 @@ NORMALIZE_X, NORMALIZE_Y = True, True   # Se "True", o dataset será normalizado
 atual_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Reading Dataset
-with open(f'{atual_dir}datasets/function_sigmoid.csv', mode ='r') as file:
+with open(f'{atual_dir}\\datasets\\function_sigmoid.csv', mode ='r') as file:
     csvfile = list(csv.reader(file))
     csvfile.pop(0)
     shuffle(csvfile)
