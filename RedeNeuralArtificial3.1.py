@@ -30,7 +30,7 @@ NORMALIZE = True                        # Se "True", o dataset será normalizado
 
 
 # Reading Dataset
-with open('F:/Downloads/archive(2)/updated_pollution_dataset (2).csv', mode ='r') as file:
+with open('F:/Downloads/datasets/updated_pollution_dataset (2).csv', mode ='r') as file:
     csvfile = list(csv.reader(file))
     csvfile.pop(0)
     shuffle(csvfile)
