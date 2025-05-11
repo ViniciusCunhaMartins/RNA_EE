@@ -14,8 +14,7 @@ import numpy as np
 from IPython.display import display, clear_output
 from random import shuffle
 import time, datetime
-import copy
-import csv
+import copy, csv, os
 
 
 # Constantes
@@ -28,9 +27,10 @@ NUM_EPOCHS = 101                        # Número de épocas de treinamento
 TEST = 0.2                              # Proporção do conjuno de teste em relação ao dataset
 NORMALIZE = True                        # Se "True", o dataset será normalizado
 
+atual_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Reading Dataset
-with open('F:/Downloads/datasets/updated_pollution_dataset (2).csv', mode ='r') as file:
+with open(f'{atual_dir}datasets/updated_pollution_dataset (2).csv', mode ='r') as file:
     csvfile = list(csv.reader(file))
     csvfile.pop(0)
     shuffle(csvfile)
